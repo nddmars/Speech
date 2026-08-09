@@ -10,6 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
+const APP_VERSION = "v9";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;
@@ -549,9 +550,15 @@ function speechList(items, isSentence, i) {
    captures nothing or produces MP4 that won't play back). Capturing raw
    samples and replaying them through an AudioBuffer works everywhere. */
 async function startRecording() {
-  recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  // Create + resume the AudioContext synchronously inside the tap gesture,
+  // BEFORE awaiting getUserMedia. iOS Safari only lets audio start during a
+  // user gesture; awaiting the mic first would lose that window and the
+  // context would stay suspended (no audio frames -> empty recording).
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === "suspended") await audioCtx.resume();
+  const resuming = audioCtx.state === "suspended" ? audioCtx.resume() : null;
+  recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  if (resuming) { try { await resuming; } catch (e) {} }
+  if (audioCtx.state === "suspended") { try { await audioCtx.resume(); } catch (e) {} }
   recSampleRate = audioCtx.sampleRate;
   recBuffers = [];
   recSource = audioCtx.createMediaStreamSource(recStream);
@@ -604,7 +611,11 @@ function wireRecorder(onRecorded) {
     } else {
       stopRecording();
       recording = false; recBtn.textContent = "🎤 Record"; recBtn.classList.remove("rec-on");
-      playBtn.disabled = !(recordedAudio && recordedAudio.data.length);
+      const has = !!(recordedAudio && recordedAudio.data.length);
+      playBtn.disabled = !has;
+      const h = document.getElementById("sHint");
+      if (h) h.textContent = has ? "Nice! Tap ▶︎ My voice to hear it." :
+        "Hmm, I didn't hear anything. Check the mic is on, then tap 🎤 and speak.";
       onRecorded();
     }
   };
@@ -1235,7 +1246,7 @@ function parentDashboard() {
         <span class="sr-sub">Let Vocabulary fetch a picture &amp; pronunciation from Wikipedia and a dictionary. Off = fully offline.</span></div>
       <button class="toggle ${root.onlineExtras ? "on" : ""}" id="onlineToggle">${root.onlineExtras ? "On" : "Off"}</button>
     </div>
-    <p class="note">Data stays on this device. Internet look-ups (if on) and the optional speech Auto-check are the only features that reach the internet. This is a practice log, not a clinical assessment.</p>
+    <p class="note">Data stays on this device. Internet look-ups (if on) and the optional speech Auto-check are the only features that reach the internet. This is a practice log, not a clinical assessment. <b>App ${APP_VERSION}</b></p>
     <div class="btn-row"><button class="btn grey" id="exit">Done</button></div>`;
   screenEl.querySelectorAll(".child-row").forEach(r => r.addEventListener("click", () => childReport(r.dataset.id)));
   document.getElementById("addChild").onclick = () => showCreateProfile(false);

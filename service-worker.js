@@ -1,6 +1,6 @@
 /* Simple offline cache so Star Readers works without internet
    once it has been opened once (great for iPad on the go). */
-const CACHE = "star-readers-v8";
+const CACHE = "star-readers-v9";
 const ASSETS = [
   "index.html",
   "styles.css",
