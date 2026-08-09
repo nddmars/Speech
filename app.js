@@ -10,7 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
-const APP_VERSION = "v12";
+const APP_VERSION = "v13";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;
@@ -24,6 +24,7 @@ function freshStore() {
     typing: { bestWpm: 0, bestAcc: 0, rounds: 0 },
     games: { played: 0, bestStreak: 0 },
     speechLog: [],
+    speech: { practiced: {} },
     writing: { traced: {}, dictOk: 0, dictTries: 0 },
     lang: { wh: 0, missing: 0, seq: 0 },
     vocab: {}, reading: {},
@@ -487,12 +488,20 @@ function stopRecorderTracks() {
   try { if (recStream) { recStream.getTracks().forEach(t => t.stop()); recStream = null; } } catch (e) {}
 }
 function todayKey() { const d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+/* Give one star per word for speaking practice (effort), only the first time.
+   Used by both Private (instant on record) and Auto-check (on a good result). */
+function awardSpeechStar(text) {
+  if (!store.speech) store.speech = { practiced: {} };
+  if (store.speech.practiced[text]) return false;
+  store.speech.practiced[text] = true; addStar(1); saveStore();
+  return true;
+}
+/* Record a quality result into the speech report (the parent's check).
+   No longer awards stars — the practice star handles reward. */
 function logSpeech(text, sound, result, mode, isSentence) {
   store.speechLog.push({ word: text, sound: isSentence ? "sentence" : sound, result, mode, day: todayKey() });
   if (store.speechLog.length > 800) store.speechLog = store.speechLog.slice(-800);
-  if ((result === "great" || result === "good") && !isSentence && !store.doneSpeech[text]) {
-    store.doneSpeech[text] = true; addStar(1);
-  } else if (result === "great" || result === "good") { addStar(1); }
+  if (result === "great" || result === "good") store.doneSpeech[text] = true;
   saveStore();
 }
 function speechList(items, isSentence, i) {
@@ -509,7 +518,7 @@ function speechList(items, isSentence, i) {
     </div>
     <p class="section-sub center" style="margin-top:0">${auto
       ? "The app listens and scores it (needs internet)."
-      : "Record, tap ▶︎ My voice to compare, then a grown-up gives the ⭐ score."}</p>
+      : "He records and gets a ⭐ right away. Grown-ups can rate the sound — anytime — for the report."}</p>
     <div class="stage">
       <div class="big-emoji">${isSentence ? it.e : pictureHTML(it.w, it.e)}</div>
       ${isSentence ? `<div class="sentence">${escapeHtml(text)}</div>` : `<div class="big-word">${colourWord(text)}</div>`}
@@ -522,7 +531,7 @@ function speechList(items, isSentence, i) {
                   : `<div class="note">Recording needs Safari on iPad.</div>`)}
       </div>
       <div id="rateRow" class="rate-row hidden">
-        <div class="ct">⭐ Grown-up: how clear was it? <span class="ct-sub">Clear or Good earns a star</span></div>
+        <div class="ct">⭐ earned! Grown-up, how clear was it? <span class="ct-sub">Optional — saves to the report</span></div>
         <div class="btn-row">
           <button class="btn green" data-r="great">⭐ Clear</button>
           <button class="btn blue" data-r="good">👍 Good</button>
@@ -539,16 +548,23 @@ function speechList(items, isSentence, i) {
   document.getElementById("prev").onclick = () => speechList(items, isSentence, (i - 1 + items.length) % items.length);
   document.getElementById("next").onclick = () => speechList(items, isSentence, (i + 1) % items.length);
   const rateRow = document.getElementById("rateRow");
-  const showRating = () => {
+  // Called right after a recording is captured: give an instant practice star
+  // (once per word), then reveal the OPTIONAL grown-up quality check.
+  const onRecorded = () => {
+    store.doneSpeech[text] = true;
+    const gotStar = awardSpeechStar(text);
+    if (gotStar) celebrate(); else dingGood();
     rateRow.classList.remove("hidden");
     rateRow.querySelectorAll("[data-r]").forEach(b => b.onclick = () => {
       logSpeech(text, it.sound, b.dataset.r, "private", isSentence);
-      if (b.dataset.r !== "try") celebrate(); else speak(text, 0.8);
+      const h = document.getElementById("sHint");
+      if (h) h.textContent = b.dataset.r === "try" ? "Saved. Let's practice it again! 🔁" : "Saved to the report ✓";
+      if (b.dataset.r === "try") speak(text, 0.8);
       rateRow.classList.add("hidden");
     });
   };
   if (auto) document.getElementById("tryBtn").onclick = () => autoCheck(it, isSentence, text);
-  else if (recSupported) wireRecorder(showRating);
+  else if (recSupported) wireRecorder(onRecorded);
   speak(text, isSentence ? 0.85 : 0.8);
 }
 /* Record the microphone with the Web Audio API (raw PCM) instead of
@@ -620,7 +636,7 @@ function wireRecorder(onRecorded) {
       const has = !!(recordedAudio && recordedAudio.data.length);
       playBtn.disabled = !has;
       const h = document.getElementById("sHint");
-      if (h) h.textContent = has ? "Nice! Tap ▶︎ My voice to compare, then score it below ⭐" :
+      if (h) h.textContent = has ? "⭐ Great practice! Tap ▶︎ My voice to hear it." :
         "Hmm, I didn't hear anything. Check the mic is on, then tap 🎤 and speak.";
       onRecorded();
     }
@@ -651,7 +667,7 @@ function autoCheck(it, isSentence, text) {
       }
       hint.innerHTML = result === "try" ? `I heard “<b>${alts[0] || "…"}</b>”. Let's try again!` : `Nice — I heard “<b>${alts[0]}</b>”! ⭐`;
       logSpeech(text, it.sound, result, "auto", isSentence);
-      if (result !== "try") celebrate(); else speak(text, 0.8);
+      if (result !== "try") { awardSpeechStar(text); celebrate(); } else speak(text, 0.8);
     };
     rec.onerror = () => { hint.textContent = "Didn't catch that — tap My turn to try again."; };
     rec.onend = () => { btn.classList.remove("rec-on"); btn.textContent = "🎤 My turn"; activeRecognition = null; };
@@ -1355,6 +1371,7 @@ function childReport(id) {
   const wordsRead = Object.keys(s.doneWords).length;
   const spoke = Object.keys(s.doneSpeech).length;
   const traced = Object.keys(s.writing.traced || {}).length;
+  const practiced = Object.keys((s.speech && s.speech.practiced) || {}).length;
   const dictPct = s.writing.dictTries ? Math.round(s.writing.dictOk / s.writing.dictTries * 100) : 0;
 
   const bySound = {};
@@ -1373,6 +1390,7 @@ function childReport(id) {
       <div class="cbox"><div class="ct">Stars</div><div class="cv">⭐ ${s.stars}</div></div>
       <div class="cbox"><div class="ct">Letters</div><div class="cv">🔤 ${letters}</div></div>
       <div class="cbox"><div class="ct">Words read</div><div class="cv">📖 ${wordsRead}</div></div>
+      <div class="cbox"><div class="ct">Words spoken</div><div class="cv">🎤 ${practiced}</div></div>
       <div class="cbox"><div class="ct">Traced</div><div class="cv">✍️ ${traced}</div></div>
       <div class="cbox"><div class="ct">Spelling</div><div class="cv">📝 ${dictPct}%</div></div>
       <div class="cbox"><div class="ct">Best typing</div><div class="cv">🚀 ${s.typing.bestWpm || 0}</div></div>
