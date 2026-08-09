@@ -10,7 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
-const APP_VERSION = "v10";
+const APP_VERSION = "v11";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;
@@ -198,8 +198,11 @@ function showCreateProfile(first) {
       <div class="btn-row">
         <button class="btn green" id="createBtn">✅ Start playing</button>
       </div>
+      ${first ? `<p class="section-sub center" style="margin-top:16px">Moving from another device?</p>
+        <div class="btn-row"><button class="btn grey" id="restoreLink">♻️ Restore a backup</button></div>` : ``}
     </div>`;
   const preview = document.getElementById("avPreview");
+  if (first) { const rl = document.getElementById("restoreLink"); if (rl) rl.onclick = () => backupScreen(() => showCreateProfile(true)); }
   screenEl.querySelectorAll(".av").forEach(b => b.onclick = () => {
     chosen = b.dataset.a; preview.textContent = chosen;
     screenEl.querySelectorAll(".av").forEach(x => x.classList.toggle("on", x === b));
@@ -1239,6 +1242,7 @@ function parentDashboard() {
     <div class="child-list">${children}</div>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn blue" id="addChild">➕ Add player</button>
+      <button class="btn green" id="backup">💾 Backup / Restore</button>
       <button class="btn grey" id="changePin">🔑 Change PIN</button>
     </div>
     <div class="setting-row">
@@ -1250,6 +1254,7 @@ function parentDashboard() {
     <div class="btn-row"><button class="btn grey" id="exit">Done</button></div>`;
   screenEl.querySelectorAll(".child-row").forEach(r => r.addEventListener("click", () => childReport(r.dataset.id)));
   document.getElementById("addChild").onclick = () => showCreateProfile(false);
+  document.getElementById("backup").onclick = () => backupScreen();
   document.getElementById("onlineToggle").onclick = () => { root.onlineExtras = !root.onlineExtras; saveRoot(); parentDashboard(); };
   document.getElementById("changePin").onclick = () => {
     pinPad({ title: "New Parent PIN", sub: "Pick a new 4-digit code.", onDone: (v) => {
@@ -1257,6 +1262,86 @@ function parentDashboard() {
     }});
   };
   document.getElementById("exit").onclick = () => { if (activeId) { showAppChrome(); showHome(); } else showProfilePicker(); };
+}
+
+/* Gather every player's data into one JSON string. */
+function exportData() {
+  const profiles = {};
+  root.profiles.forEach(p => { profiles[p.id] = loadProfileStore(p.id); });
+  return JSON.stringify({
+    app: "StarReaders", version: APP_VERSION, exportedAt: new Date().toISOString(),
+    root, profiles,
+  }, null, 2);
+}
+/* Replace this device's data with a backup. Returns {ok, count|msg}. */
+function doRestore(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { return { ok: false, msg: "That doesn't look like a backup file." }; }
+  if (!data || !data.root || !Array.isArray(data.root.profiles) || !data.profiles)
+    return { ok: false, msg: "This backup is missing data." };
+  try {
+    localStorage.setItem(ROOT_KEY, JSON.stringify(data.root));
+    Object.keys(data.profiles).forEach(id => localStorage.setItem(profileKey(id), JSON.stringify(data.profiles[id])));
+    root = loadRoot(); activeId = null; store = null;
+    return { ok: true, count: data.root.profiles.length };
+  } catch (e) { return { ok: false, msg: "Couldn't save the backup (device storage may be full)." }; }
+}
+function backupScreen(back) {
+  back = back || parentDashboard;
+  showLoginChrome();
+  setBack(back);
+  const json = exportData();
+  const players = root.profiles.length;
+  screenEl.innerHTML = `
+    <h2 class="section-title">Backup &amp; Restore 💾</h2>
+    <p class="section-sub">Progress is saved on this device only. Keep a backup to protect it or move it to another device.</p>
+    <h3 class="section-title" style="font-size:18px">Backup — ${players} player${players === 1 ? "" : "s"}</h3>
+    <div class="btn-row">
+      <button class="btn green" id="download">⬇️ Save backup file</button>
+      <button class="btn blue" id="copy">📋 Copy</button>
+    </div>
+    <textarea id="backupText" class="backup-box" readonly>${escapeHtml(json)}</textarea>
+    <p class="section-sub">On iPad, if the file opens instead of saving, use <b>Copy</b> and paste it somewhere safe (e.g. an email to yourself).</p>
+    <h3 class="section-title" style="font-size:18px;margin-top:14px">Restore</h3>
+    <p class="section-sub">Load a backup file or paste backup text, then Restore. This <b>replaces</b> the data on this device.</p>
+    <div class="btn-row">
+      <label class="btn blue" for="restoreFile">📂 Choose file</label>
+      <input id="restoreFile" type="file" accept=".json,application/json" hidden>
+      <button class="btn orange" id="restoreBtn">♻️ Restore</button>
+    </div>
+    <textarea id="restoreText" class="backup-box" placeholder="…or paste backup text here"></textarea>
+    <div id="restoreMsg" class="hint" style="min-height:22px"></div>
+    <div class="btn-row"><button class="btn grey" id="back">‹ Back</button></div>`;
+  const msg = t => { document.getElementById("restoreMsg").textContent = t; };
+  document.getElementById("download").onclick = () => {
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "star-readers-backup.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+  document.getElementById("copy").onclick = async () => {
+    const ta = document.getElementById("backupText");
+    try { await navigator.clipboard.writeText(json); msg("Copied! 📋 Paste it somewhere safe."); }
+    catch (e) { ta.focus(); ta.select(); try { document.execCommand("copy"); msg("Copied! 📋"); } catch (e2) { msg("Select the text above and copy it."); } }
+  };
+  const fileInput = document.getElementById("restoreFile");
+  fileInput.onchange = () => {
+    const f = fileInput.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { document.getElementById("restoreText").value = r.result; msg("File loaded — tap ♻️ Restore."); };
+    r.readAsText(f);
+  };
+  document.getElementById("restoreBtn").onclick = () => {
+    const text = document.getElementById("restoreText").value.trim();
+    if (!text) { msg("Choose a file or paste backup text first."); return; }
+    if (!confirm("Restore will REPLACE all players and progress on this device. Continue?")) return;
+    const res = doRestore(text);
+    if (res.ok) { msg("Restored " + res.count + " player(s)! ✅"); setTimeout(() => showProfilePicker(), 900); }
+    else msg(res.msg || "Couldn't restore.");
+  };
+  document.getElementById("back").onclick = parentDashboard;
 }
 function childReport(id) {
   const p = root.profiles.find(x => x.id === id);
