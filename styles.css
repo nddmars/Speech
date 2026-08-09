@@ -1,0 +1,658 @@
+/* ---- Star Readers: kid-friendly styling for iPad + web ---- */
+
+:root {
+  --blue: #5b7cfa;
+  --blue-dark: #3f5fe0;
+  --green: #35c76a;
+  --green-dark: #26a755;
+  --orange: #ff9f43;
+  --pink: #ff6b9d;
+  --purple: #a66cff;
+  --yellow: #ffd54a;
+  --bg: #eef3ff;
+  --card: #ffffff;
+  --ink: #253053;
+  --muted: #7a86a8;
+  --shadow: 0 8px 20px rgba(70, 90, 160, 0.18);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Comic Sans MS", "Chalkboard SE", "Baloo 2", system-ui, -apple-system, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---------- Top bar ---------- */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--blue);
+  color: #fff;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+#title { font-size: 22px; font-weight: 800; }
+#starCount {
+  background: rgba(255, 255, 255, 0.22);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 20px;
+  font-weight: 800;
+  min-width: 74px;
+  text-align: center;
+}
+.icon-btn {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+}
+.icon-btn:active { transform: scale(0.94); }
+
+/* ---------- Screen container ---------- */
+#screen {
+  flex: 1;
+  padding: 22px 18px 40px;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ---------- Home menu ---------- */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-top: 8px;
+}
+.menu-card {
+  background: var(--card);
+  border-radius: 26px;
+  padding: 30px 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  border: 4px solid transparent;
+  transition: transform 0.12s ease;
+}
+.menu-card:active { transform: scale(0.96); }
+.menu-card .emoji { font-size: 64px; line-height: 1; }
+.menu-card .label { font-size: 24px; font-weight: 800; margin-top: 12px; }
+.menu-card .sub { font-size: 15px; color: var(--muted); margin-top: 4px; }
+.menu-card.c1 { border-color: var(--blue); }
+.menu-card.c2 { border-color: var(--green); }
+.menu-card.c3 { border-color: var(--orange); }
+.menu-card.c4 { border-color: var(--purple); }
+
+.welcome {
+  text-align: center;
+  font-size: 20px;
+  color: var(--muted);
+  margin: 4px 0 20px;
+}
+
+/* ---------- Big activity card (letters / words / speech) ---------- */
+.stage {
+  background: var(--card);
+  border-radius: 30px;
+  box-shadow: var(--shadow);
+  padding: 28px 22px 34px;
+  text-align: center;
+  margin-top: 6px;
+}
+.big-emoji { font-size: 130px; line-height: 1; margin: 6px 0 4px; }
+.big-letter {
+  font-size: 150px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--blue);
+  margin: 6px 0;
+}
+.big-word {
+  font-size: 78px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--ink);
+  margin: 10px 0;
+}
+/* colour each letter of a word to help sound it out */
+.big-word .l0 { color: var(--blue); }
+.big-word .l1 { color: var(--green-dark); }
+.big-word .l2 { color: var(--orange); }
+.big-word .l3 { color: var(--pink); }
+.big-word .l4 { color: var(--purple); }
+.hint { font-size: 18px; color: var(--muted); margin-top: 2px; }
+
+/* ---------- Buttons ---------- */
+.btn-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 18px 30px;
+  font-size: 22px;
+  font-weight: 800;
+  font-family: inherit;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 130px;
+  justify-content: center;
+}
+.btn:active { transform: scale(0.95); }
+.btn:disabled { opacity: 0.45; }
+.btn.blue { background: var(--blue); }
+.btn.green { background: var(--green); }
+.btn.orange { background: var(--orange); }
+.btn.pink { background: var(--pink); }
+.btn.purple { background: var(--purple); }
+.btn.grey { background: #96a0c0; }
+.btn.rec-on { background: #e5484d; animation: pulse 1s infinite; }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.5); }
+  50% { box-shadow: 0 0 0 16px rgba(229, 72, 77, 0); }
+}
+
+.nav-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  gap: 12px;
+}
+.progress-pill {
+  background: var(--card);
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 800;
+  color: var(--muted);
+  box-shadow: var(--shadow);
+}
+
+/* ---------- Picker grids (choose a letter / word) ---------- */
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+.pick {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 16px 6px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  border: 3px solid transparent;
+}
+.pick:active { transform: scale(0.94); }
+.pick.done { border-color: var(--green); }
+.pick .pe { font-size: 34px; line-height: 1; }
+.pick .pl { font-size: 22px; font-weight: 800; margin-top: 4px; }
+.pick .star { font-size: 14px; }
+
+.section-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 6px 2px 2px;
+}
+.section-sub { color: var(--muted); margin: 0 2px 6px; }
+
+/* ---------- Speech playback compare ---------- */
+.compare {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.compare .cbox {
+  background: var(--bg);
+  border-radius: 20px;
+  padding: 14px 18px;
+  min-width: 130px;
+}
+.compare .cbox .ct { font-size: 15px; color: var(--muted); font-weight: 800; }
+
+/* ---------- Celebration ---------- */
+#celebrate {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(40, 60, 140, 0.35);
+  z-index: 50;
+  transition: opacity 0.2s ease;
+}
+#celebrate.hidden { opacity: 0; pointer-events: none; }
+#celebrateStar { font-size: 150px; animation: pop 0.6s ease; }
+#celebrateText {
+  font-size: 34px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 3px 8px rgba(0,0,0,0.3);
+}
+@keyframes pop {
+  0% { transform: scale(0.2) rotate(-30deg); opacity: 0; }
+  60% { transform: scale(1.25) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.hidden { display: none !important; }
+
+/* Confetti dots */
+.confetti {
+  position: fixed;
+  top: -20px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  z-index: 49;
+  animation: fall linear forwards;
+}
+@keyframes fall {
+  to { transform: translateY(110vh) rotate(540deg); opacity: 0.2; }
+}
+
+/* Small info line */
+.note {
+  text-align: center;
+  color: var(--muted);
+  font-size: 15px;
+  margin-top: 26px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   THEMES — swap the accent palette via data-theme on <html>
+   ============================================================ */
+:root[data-theme="pets"]   { --blue:#ff7aa8; --blue-dark:#e85f90; --bg:#fff0f6; }
+:root[data-theme="space"]  { --blue:#7b61ff; --blue-dark:#5a40e0; --bg:#efeaff; }
+:root[data-theme="dino"]   { --blue:#2fa96b; --blue-dark:#1f8a54; --bg:#eafbf1; }
+:root[data-theme="racing"] { --blue:#ef4a3c; --blue-dark:#d43526; --bg:#fff0ee; }
+
+/* Extra menu-card border colours */
+.menu-card.c5 { border-color: var(--pink); }
+.menu-card.c6 { border-color: var(--yellow); }
+
+/* ============================================================
+   Mode switch (Game / Study) and small toggles
+   ============================================================ */
+.mode-switch {
+  display: flex;
+  gap: 8px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 999px;
+  padding: 6px;
+  margin: 2px auto 16px;
+  max-width: 340px;
+  box-shadow: var(--shadow);
+}
+.mode-switch.small { max-width: 320px; margin-bottom: 10px; }
+.ms {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 12px 10px;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ms.on { background: var(--blue); color: #fff; box-shadow: var(--shadow); }
+
+/* ============================================================
+   Pet / mascot banner on Home
+   ============================================================ */
+.pet-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--card);
+  border-radius: 24px;
+  padding: 14px 18px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.pet-banner .pet { font-size: 56px; line-height: 1; animation: bob 2.4s ease-in-out infinite; }
+@keyframes bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-6px);} }
+.pet-info { flex: 1; }
+.pet-name { font-size: 20px; font-weight: 800; }
+.pet-sub { color: var(--muted); font-size: 14px; }
+.pet-stars {
+  background: var(--blue);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 800;
+  font-size: 18px;
+}
+
+/* three columns on wider iPad screens */
+@media (min-width: 620px) {
+  .menu-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ============================================================
+   Typing input
+   ============================================================ */
+.type-in {
+  width: 100%;
+  max-width: 360px;
+  margin: 14px auto 4px;
+  display: block;
+  font-family: inherit;
+  font-size: 40px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 3px;
+  border: 4px solid var(--blue);
+  border-radius: 18px;
+  padding: 12px 16px;
+  color: var(--ink);
+  background: #fff;
+  outline: none;
+  text-transform: lowercase;
+}
+.type-fb { min-height: 26px; font-size: 20px; font-weight: 800; margin-top: 6px; }
+.type-fb.good { color: var(--green-dark); }
+.type-fb.near { color: var(--orange); }
+.type-fb.bad  { color: var(--pink); }
+.big-word .wrongc { color: #cbd2e6; }
+
+/* ============================================================
+   Game screens: top chips + choice buttons
+   ============================================================ */
+.game-top {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.chip {
+  background: var(--card);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: var(--shadow);
+}
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+.choice {
+  border: none;
+  border-radius: 20px;
+  background: var(--blue);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 40px;
+  padding: 26px 10px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 0.1s ease;
+}
+.choice-grid.words .choice { font-size: 30px; text-transform: lowercase; }
+.choice:active { transform: scale(0.95); }
+.choice.right { background: var(--green); animation: pop 0.4s ease; }
+.choice.wrong { background: var(--pink); opacity: 0.85; }
+.choice:disabled { cursor: default; }
+
+/* ============================================================
+   Say It! rating row
+   ============================================================ */
+.rate-row { margin-top: 16px; }
+.rate-row .ct { font-weight: 800; color: var(--muted); margin-bottom: 6px; }
+
+/* ============================================================
+   Themes screen
+   ============================================================ */
+.theme-card {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 24px 14px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  border: 4px solid transparent;
+}
+.theme-card .emoji { font-size: 54px; }
+.theme-card .label { font-size: 20px; font-weight: 800; margin-top: 8px; }
+.theme-card .sub { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.theme-card.active { border-color: var(--green); }
+.theme-card.locked { opacity: 0.6; }
+
+/* ============================================================
+   Progress report bars
+   ============================================================ */
+.cv { font-size: 26px; font-weight: 800; margin-top: 2px; }
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 2px;
+}
+.bar-label { width: 58px; font-weight: 800; font-size: 18px; text-align: center; }
+.bar-track {
+  flex: 1;
+  background: #e3e8f7;
+  border-radius: 999px;
+  height: 22px;
+  overflow: hidden;
+}
+.bar-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+.bar-fill.low  { background: var(--pink); }
+.bar-fill.mid  { background: var(--orange); }
+.bar-fill.high { background: var(--green); }
+.bar-num { width: 52px; text-align: right; font-weight: 800; color: var(--muted); }
+
+/* ============================================================
+   Login: topbar chip, profile picker, avatars
+   ============================================================ */
+.top-right { display: flex; align-items: center; gap: 8px; }
+.chip-btn {
+  background: rgba(255,255,255,0.22); color: #fff; border: none; border-radius: 999px;
+  padding: 8px 14px; font-size: 18px; font-weight: 800; font-family: inherit; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+}
+.chip-btn:active { transform: scale(0.95); }
+.section-title.center, .section-sub.center { text-align: center; }
+
+.profile-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px; margin-top: 14px;
+}
+.profile-card {
+  background: var(--card); border-radius: 24px; padding: 22px 10px; text-align: center;
+  box-shadow: var(--shadow); cursor: pointer; border: 4px solid transparent;
+}
+.profile-card:active { transform: scale(0.96); }
+.profile-card .pa { font-size: 56px; line-height: 1; }
+.profile-card .pn { font-size: 20px; font-weight: 800; margin-top: 8px; }
+.profile-card.add { border-color: var(--blue); color: var(--blue); }
+
+.avatar-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 8px auto 16px; max-width: 420px;
+}
+.av {
+  background: var(--bg); border: 3px solid transparent; border-radius: 16px; padding: 8px 0;
+  font-size: 30px; cursor: pointer; font-family: inherit;
+}
+.av.on { border-color: var(--blue); background: #fff; }
+
+/* ============================================================
+   Sentences + WH question text
+   ============================================================ */
+.sentence {
+  font-size: 34px; font-weight: 800; color: var(--ink); line-height: 1.3;
+  margin: 12px 8px; letter-spacing: 0.5px;
+}
+.q-text { font-size: 26px; font-weight: 800; margin: 8px 4px 0; }
+
+/* ============================================================
+   Tracing canvas
+   ============================================================ */
+.pad-wrap {
+  display: flex; justify-content: center; margin: 12px 0 6px;
+}
+#pad {
+  background: #fff; border: 4px dashed var(--blue); border-radius: 22px; touch-action: none;
+}
+
+/* ============================================================
+   What's Missing items
+   ============================================================ */
+.item-row {
+  display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin: 16px 0;
+}
+.item {
+  font-size: 60px; line-height: 1; background: var(--bg); border-radius: 20px;
+  padding: 12px 16px; box-shadow: var(--shadow);
+}
+.item.gone { opacity: 0.9; filter: grayscale(1); }
+
+/* ============================================================
+   Sequencing cards
+   ============================================================ */
+.seq-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 8px;
+}
+@media (min-width: 620px) { .seq-grid { grid-template-columns: repeat(4, 1fr); } }
+.seq-card {
+  position: relative; background: var(--card); border: 4px solid transparent; border-radius: 22px;
+  padding: 18px 8px; cursor: pointer; box-shadow: var(--shadow); font-family: inherit;
+}
+.seq-card .se { font-size: 54px; line-height: 1; }
+.seq-card .sl { font-size: 16px; font-weight: 800; color: var(--ink); margin-top: 6px; }
+.seq-card .sn {
+  position: absolute; top: 8px; right: 10px; font-size: 20px; font-weight: 800; color: var(--green-dark);
+}
+.seq-card.placed { border-color: var(--green); background: #eefbf3; }
+.seq-card.shake { animation: shake 0.4s; }
+@keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px);} 75%{transform:translateX(8px);} }
+
+/* ============================================================
+   PIN pad
+   ============================================================ */
+.pin-dots { display: flex; justify-content: center; gap: 16px; margin: 18px 0 22px; }
+.pin-dots .pd {
+  width: 20px; height: 20px; border-radius: 50%; background: #d7def2; display: inline-block;
+}
+.pin-dots .pd.f { background: var(--blue); }
+.pin-pad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 320px; margin: 0 auto;
+}
+.pin-k {
+  background: var(--card); border: none; border-radius: 18px; padding: 20px 0; font-size: 28px;
+  font-weight: 800; font-family: inherit; box-shadow: var(--shadow); cursor: pointer; color: var(--ink);
+}
+.pin-k:active { transform: scale(0.94); }
+.pin-k.ghost { background: transparent; box-shadow: none; color: var(--muted); }
+
+/* ============================================================
+   Parent dashboard child list
+   ============================================================ */
+.child-list { display: flex; flex-direction: column; gap: 12px; }
+.child-row {
+  display: flex; align-items: center; gap: 14px; background: var(--card); border-radius: 20px;
+  padding: 14px 18px; box-shadow: var(--shadow); cursor: pointer;
+}
+.child-row .ca { font-size: 40px; }
+.child-row .ci { flex: 1; }
+.child-row .cn { font-size: 20px; font-weight: 800; }
+.child-row .cs { color: var(--muted); font-size: 14px; }
+.child-row .cgo { font-size: 30px; color: var(--muted); font-weight: 800; }
+
+/* ============================================================
+   Vocabulary card + safe online lookup
+   ============================================================ */
+.def { font-size: 20px; color: var(--ink); margin: 12px 10px 4px; line-height: 1.4; }
+.ex { font-size: 17px; color: var(--muted); font-style: italic; margin: 0 10px 6px; }
+.vimg {
+  max-width: 220px; max-height: 180px; border-radius: 18px; box-shadow: var(--shadow);
+  object-fit: cover;
+}
+.onl {
+  margin: 6px 10px; padding: 0 4px; text-align: center;
+}
+.onl-ex { font-size: 16px; color: var(--ink); margin: 6px 0; line-height: 1.4; }
+.onl-ph { font-size: 18px; color: var(--blue-dark); margin: 6px 0; }
+
+/* ============================================================
+   Read-along tappable words + highlight
+   ============================================================ */
+.rw { cursor: pointer; border-radius: 6px; padding: 0 1px; transition: background 0.1s; }
+.rw:active { background: #dfe6ff; }
+.rw.hi { background: var(--yellow); color: var(--ink); border-radius: 6px; }
+.sentence.read { line-height: 1.6; }
+.passage {
+  font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1.6;
+  margin: 10px 8px; text-align: left;
+}
+
+/* ============================================================
+   Parent settings toggle
+   ============================================================ */
+.setting-row {
+  display: flex; align-items: center; gap: 12px; background: var(--card);
+  border-radius: 18px; padding: 14px 16px; box-shadow: var(--shadow); margin-top: 14px;
+}
+.sr-text { flex: 1; font-size: 16px; }
+.sr-sub { color: var(--muted); font-size: 13px; }
+.toggle {
+  border: none; border-radius: 999px; padding: 10px 20px; font-weight: 800; font-family: inherit;
+  font-size: 16px; cursor: pointer; background: #c3ccdf; color: #fff; min-width: 68px;
+}
+.toggle.on { background: var(--green); }
+
+/* ============================================================
+   Built-in safe pictures (SVG) sizing per context
+   ============================================================ */
+.pic { display: inline-flex; line-height: 0; }
+.big-emoji .pic svg { width: 150px; height: 150px; }
+.pe .pic svg { width: 40px; height: 40px; }
+.pick .pe .pic { justify-content: center; }

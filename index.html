@@ -1,0 +1,38 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#5b7cfa" />
+<title>Star Readers</title>
+
+<!-- Make it feel like a real app when added to the iPad home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Star Readers" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="icon" type="image/png" href="icons/icon-192.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+
+<div id="app">
+  <header id="topbar">
+    <button id="backBtn" class="icon-btn" aria-label="Back" hidden>‹ Back</button>
+    <button id="profileChip" class="chip-btn" hidden>
+      <span id="pfAvatar">🦊</span> <span id="pfName">Player</span>
+    </button>
+    <div id="title">⭐ Star Readers</div>
+    <div class="top-right">
+      <div id="starCount" hidden>⭐ <span id="starNum">0</span></div>
+      <button id="parentBtn" class="icon-btn" aria-label="Parent area" hidden>🔒</button>
+    </div>
+  </header>
+
+  <main id="screen"><!-- screens are rendered here by app.js --></main>
+
+  <div id="celebrate" class="hidden" aria-hidden="true">
+    <div id="celebrateStar">⭐</div>
+    <div id="celebrateText">Great job!</div>
+  </div>
+</div>
+
+<script src="pictures.js"></script>
+<script src="content.js"></script>
+<script src="app.js"></script>
