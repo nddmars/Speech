@@ -666,3 +666,6 @@ html, body {
   font-size: 12px; color: var(--ink); background: #fff; resize: vertical;
   -webkit-user-select: text; user-select: text;
 }
+
+/* Speaking: rating sub-label */
+.rate-row .ct-sub { display: block; font-size: 13px; color: var(--muted); font-weight: 700; margin-top: 2px; }

@@ -10,7 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
-const APP_VERSION = "v11";
+const APP_VERSION = "v12";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;
@@ -507,6 +507,9 @@ function speechList(items, isSentence, i) {
       <button class="ms ${!auto ? "on" : ""}" data-sm="private">🔒 Private</button>
       <button class="ms ${auto ? "on" : ""}" data-sm="auto">✨ Auto-check</button>
     </div>
+    <p class="section-sub center" style="margin-top:0">${auto
+      ? "The app listens and scores it (needs internet)."
+      : "Record, tap ▶︎ My voice to compare, then a grown-up gives the ⭐ score."}</p>
     <div class="stage">
       <div class="big-emoji">${isSentence ? it.e : pictureHTML(it.w, it.e)}</div>
       ${isSentence ? `<div class="sentence">${escapeHtml(text)}</div>` : `<div class="big-word">${colourWord(text)}</div>`}
@@ -519,7 +522,7 @@ function speechList(items, isSentence, i) {
                   : `<div class="note">Recording needs Safari on iPad.</div>`)}
       </div>
       <div id="rateRow" class="rate-row hidden">
-        <div class="ct">How did it sound?</div>
+        <div class="ct">⭐ Grown-up: how clear was it? <span class="ct-sub">Clear or Good earns a star</span></div>
         <div class="btn-row">
           <button class="btn green" data-r="great">⭐ Clear</button>
           <button class="btn blue" data-r="good">👍 Good</button>
@@ -617,7 +620,7 @@ function wireRecorder(onRecorded) {
       const has = !!(recordedAudio && recordedAudio.data.length);
       playBtn.disabled = !has;
       const h = document.getElementById("sHint");
-      if (h) h.textContent = has ? "Nice! Tap ▶︎ My voice to hear it." :
+      if (h) h.textContent = has ? "Nice! Tap ▶︎ My voice to compare, then score it below ⭐" :
         "Hmm, I didn't hear anything. Check the mic is on, then tap 🎤 and speak.";
       onRecorded();
     }

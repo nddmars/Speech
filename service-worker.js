@@ -3,7 +3,7 @@
    always gets the latest code (no more stale-cache surprises), and falls back
    to the cache only when offline. Cross-origin requests (Wikipedia / dictionary
    look-ups and their audio) bypass the worker entirely. */
-const CACHE = "star-readers-v11";
+const CACHE = "star-readers-v12";
 const ASSETS = [
   "index.html",
   "styles.css",
