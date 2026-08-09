@@ -134,7 +134,7 @@ function showAppChrome() {
   renderStarCount(); applyTheme();
 }
 
-let mediaRecorder = null, recChunks = [], recordedUrl = null, activeRecognition = null, roundTimer = null;
+let mediaRecorder = null, recChunks = [], recordedUrl = null, recordedBlob = null, activeRecognition = null, roundTimer = null;
 function stopEverything() {
   if (window.speechSynthesis) speechSynthesis.cancel();
   stopRecorderTracks();
@@ -488,6 +488,7 @@ function logSpeech(text, sound, result, mode, isSentence) {
 function speechList(items, isSentence, i) {
   stopEverything();
   if (recordedUrl) { URL.revokeObjectURL(recordedUrl); recordedUrl = null; }
+  recordedBlob = null;
   setBack(() => speakMenu());
   const it = items[i];
   const auto = store.speechMode === "auto" && AUTO_SPEECH_SUPPORTED;
@@ -538,6 +539,40 @@ function speechList(items, isSentence, i) {
   else if (recSupported) wireRecorder(showRating);
   speak(text, isSentence ? 0.85 : 0.8);
 }
+/* Choose a recording format the browser actually supports. iOS Safari
+   records audio/mp4 (AAC); Chrome/Firefox record webm/opus. */
+function pickRecMime() {
+  const cands = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/aac", "audio/ogg"];
+  if (window.MediaRecorder && MediaRecorder.isTypeSupported) {
+    for (const c of cands) if (MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return "";
+}
+/* Decode + play the recording via the Web Audio API. This is far more
+   reliable than an <audio> element on iOS Safari, whose MediaRecorder
+   output (fragmented MP4) often won't play in <audio> for lack of a
+   duration. Falls back to <audio> if decoding isn't available. */
+async function playRecording(hintEl) {
+  if (!recordedBlob || !recordedBlob.size) { if (hintEl) hintEl.textContent = "No recording yet — tap 🎤 Record first."; return false; }
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    const arr = await recordedBlob.arrayBuffer();
+    const audioBuf = await new Promise((res, rej) => {
+      const p = audioCtx.decodeAudioData(arr.slice(0), res, rej);
+      if (p && p.then) p.then(res, rej);
+    });
+    const src = audioCtx.createBufferSource();
+    src.buffer = audioBuf; src.connect(audioCtx.destination); src.start(0);
+    return true;
+  } catch (e) {}
+  try {
+    const a = new Audio(); a.src = recordedUrl || URL.createObjectURL(recordedBlob);
+    await a.play(); return true;
+  } catch (e) {}
+  if (hintEl) hintEl.textContent = "Hmm, couldn't play that back. Try recording again. 🎙️";
+  return false;
+}
 function wireRecorder(onRecorded) {
   const recBtn = document.getElementById("recBtn"), playBtn = document.getElementById("playBtn");
   let recording = false;
@@ -545,21 +580,34 @@ function wireRecorder(onRecorded) {
     if (!recording) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        recChunks = []; mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+        recChunks = [];
+        const mime = pickRecMime();
+        mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
         mediaRecorder.onstop = () => {
-          const blob = new Blob(recChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+          // Stop the mic tracks only now — after the final chunk has arrived.
+          stream.getTracks().forEach(t => t.stop());
+          const type = mediaRecorder.mimeType || mime || "audio/mp4";
+          recordedBlob = new Blob(recChunks, { type });
           if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-          recordedUrl = URL.createObjectURL(blob); playBtn.disabled = false; onRecorded();
+          recordedUrl = recordedBlob.size ? URL.createObjectURL(recordedBlob) : null;
+          playBtn.disabled = !recordedBlob.size;
+          onRecorded();
         };
-        mediaRecorder.start(); recording = true; recBtn.textContent = "⏹ Stop"; recBtn.classList.add("rec-on");
+        // Timeslice makes dataavailable fire periodically — more reliable on iOS.
+        mediaRecorder.start(200);
+        recording = true; recBtn.textContent = "⏹ Stop"; recBtn.classList.add("rec-on");
       } catch (err) { alert("Please allow the microphone so we can record. 🎙️"); }
     } else {
-      if (mediaRecorder) mediaRecorder.stop(); stopRecorderTracks();
       recording = false; recBtn.textContent = "🎤 Record"; recBtn.classList.remove("rec-on");
+      try { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); } catch (e) {}
     }
   };
-  playBtn.onclick = () => { if (recordedUrl) new Audio(recordedUrl).play(); };
+  playBtn.onclick = async () => {
+    const prev = playBtn.textContent; playBtn.textContent = "▶︎ Playing…";
+    await playRecording(document.getElementById("sHint"));
+    playBtn.textContent = prev;
+  };
 }
 function autoCheck(it, isSentence, text) {
   const hint = document.getElementById("sHint"), btn = document.getElementById("tryBtn");
