@@ -250,4 +250,81 @@ const STORIES = [
       { q: "What did Lily plant?", options: ["A seed", "A rock", "A ball"], answer: "A seed" },
       { q: "What grew at the end?", options: ["A flower", "A tree", "A cake"], answer: "A flower" },
     ] },
+  { title: "The Wet Puppy", cover: "🐶",
+    pages: [
+      { e: "🐶", text: "Pip the puppy went out to play." },
+      { e: "🌧️", text: "Then it began to rain and rain." },
+      { e: "💧", text: "Pip got very wet and cold." },
+      { e: "🧺", text: "Mom dried him with a soft towel. Warm at last!" },
+    ],
+    questions: [
+      { q: "Who went out to play?", options: ["Pip the puppy", "A fish", "A cat"], answer: "Pip the puppy" },
+      { q: "What made Pip wet?", options: ["The rain", "The sun", "A ball"], answer: "The rain" },
+    ] },
+  { title: "Ten Red Ants", cover: "🐜",
+    pages: [
+      { e: "🐜", text: "Ten red ants went for a walk." },
+      { e: "🍰", text: "They found a big yellow cake." },
+      { e: "🙌", text: "The ants took it bit by bit." },
+      { e: "🎉", text: "Back home they had a feast. Yum!" },
+    ],
+    questions: [
+      { q: "What color were the ants?", options: ["Red", "Blue", "Green"], answer: "Red" },
+      { q: "What did the ants find?", options: ["A cake", "A hat", "A car"], answer: "A cake" },
+    ] },
+  { title: "The Fox in the Box", cover: "🦊",
+    pages: [
+      { e: "🦊", text: "A little fox sat in a box." },
+      { e: "📦", text: "The box began to slide and slide." },
+      { e: "⛰️", text: "It went down the hill so fast!" },
+      { e: "😄", text: "The fox got out and said, “Again!”" },
+    ],
+    questions: [
+      { q: "Where did the fox sit?", options: ["In a box", "In a bed", "In a bus"], answer: "In a box" },
+      { q: "What did the box do?", options: ["Slide down a hill", "Fly away", "Sink"], answer: "Slide down a hill" },
+    ] },
+  { title: "Nina's Bike", cover: "🚲",
+    pages: [
+      { e: "🚲", text: "Nina got a shiny red bike." },
+      { e: "😟", text: "At first she was a bit scared." },
+      { e: "👨‍👧", text: "Dad held on as she began to ride." },
+      { e: "🎉", text: "Soon she rode all by herself. Yay!" },
+    ],
+    questions: [
+      { q: "What did Nina get?", options: ["A bike", "A kite", "A dog"], answer: "A bike" },
+      { q: "Who helped her?", options: ["Dad", "Mom", "A cat"], answer: "Dad" },
+    ] },
+  { title: "Max the Cat", cover: "🐱",
+    pages: [
+      { e: "🎩", text: "Max the cat found a big hat." },
+      { e: "😴", text: "He hid inside it for a nap." },
+      { e: "👀", text: "The kids looked all around." },
+      { e: "🐱", text: "Then the hat gave a little “Meow!”" },
+    ],
+    questions: [
+      { q: "What did Max find?", options: ["A hat", "A box", "A ball"], answer: "A hat" },
+      { q: "What did Max do in the hat?", options: ["Take a nap", "Eat lunch", "Go swimming"], answer: "Take a nap" },
+    ] },
+  { title: "Fred the Frog", cover: "🐸",
+    pages: [
+      { e: "🐸", text: "Fred the frog sat on a log." },
+      { e: "🪰", text: "He saw a little fly zoom by." },
+      { e: "⬆️", text: "Fred jumped up high to catch it." },
+      { e: "😋", text: "Snap! Lunch for Fred. Yum!" },
+    ],
+    questions: [
+      { q: "Where did Fred sit?", options: ["On a log", "On a bed", "In a cup"], answer: "On a log" },
+      { q: "What did Fred want to catch?", options: ["A fly", "A cake", "A hat"], answer: "A fly" },
+    ] },
+  { title: "The Snowman", cover: "⛄",
+    pages: [
+      { e: "⛄", text: "Sam made a big white snowman." },
+      { e: "🧣", text: "He gave it a scarf and a hat." },
+      { e: "☀️", text: "The sun came out and it got warm." },
+      { e: "😊", text: "The snowman got small, but Sam still smiled." },
+    ],
+    questions: [
+      { q: "What did Sam make?", options: ["A snowman", "A sandcastle", "A cake"], answer: "A snowman" },
+      { q: "What made the snowman small?", options: ["The sun", "The rain", "The wind"], answer: "The sun" },
+    ] },
 ];
