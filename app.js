@@ -10,7 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
-const APP_VERSION = "v13";
+const APP_VERSION = "v14";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;
@@ -65,29 +65,55 @@ function addStar(n = 1) {
    2. VOICE: text-to-speech + optional recognition
    ============================================================ */
 let voice = null;
+const FEMALE_HINTS = /(samantha|karen|moira|tessa|martha|catherine|serena|fiona|victoria|allison|ava|susan|zoe|kate|nicky|female|woman|girl)/i;
+const MALE_HINTS = /(daniel|alex|fred|aaron|arthur|gordon|oliver|rishi|thomas|reed|male|man|boy)/i;
+const NOVELTY = /(eloquence|novelty|whisper|organ|zarvox|trinoids|bells|bad news|good news|jester|bubbles|boing|wobble|superstar|cellos|deranged|hysterical|bahh|albert|ralph|junior)/i;
+function englishVoices() {
+  const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  return vs.filter(v => /^en[-_]?/i.test(v.lang));
+}
+function scoreVoice(v) {
+  let s = 0;
+  if (FEMALE_HINTS.test(v.name)) s += 10;
+  if (MALE_HINTS.test(v.name)) s -= 10;
+  if (/enhanced|premium|neural/i.test(v.name)) s += 4;
+  if (/en[-_]US/i.test(v.lang)) s += 3; else if (/en[-_]GB/i.test(v.lang)) s += 2; else if (/en[-_]AU/i.test(v.lang)) s += 1;
+  if (v.localService) s += 1;
+  if (NOVELTY.test(v.name)) s -= 30;
+  return s;
+}
 function pickVoice() {
-  const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
-  voice = voices.find(v => /^en/i.test(v.lang) && /female|samantha|karen|moira|tessa|kids?/i.test(v.name)) ||
-          voices.find(v => /^en/i.test(v.lang)) || voices[0] || null;
+  const vs = englishVoices();
+  if (!vs.length) { voice = (window.speechSynthesis ? speechSynthesis.getVoices()[0] : null) || null; return; }
+  if (root && root.voiceURI) { const saved = vs.find(v => v.voiceURI === root.voiceURI); if (saved) { voice = saved; return; } }
+  voice = vs.slice().sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
 }
 if (window.speechSynthesis) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function speak(text, rate = 0.85) {
+/* Global speaking speed (parent-adjustable). 0.85 = "normal"; default is a
+   little slower for young ears. All speech is scaled by this so the Voice
+   slider affects everything uniformly. */
+function speechRate() { return (root && root.voiceRate) || 0.75; }
+function utter(text, base) {
+  const u = new SpeechSynthesisUtterance(text);
+  if (voice) u.voice = voice;
+  const scale = speechRate() / 0.85;
+  u.rate = Math.max(0.4, Math.min(1.2, (base != null ? base : 0.85) * scale));
+  u.pitch = 1.1;
+  return u;
+}
+function speak(text, rate) {
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  if (voice) u.voice = voice; u.rate = rate; u.pitch = 1.05;
-  speechSynthesis.speak(u);
+  speechSynthesis.speak(utter(text, rate));
 }
 function soundOut(word) {
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
   word.split("").forEach(ch => {
     const info = LETTERS.find(x => x.L === ch.toLowerCase());
-    const u = new SpeechSynthesisUtterance(info ? info.sound : ch);
-    if (voice) u.voice = voice; u.rate = 0.7; speechSynthesis.speak(u);
+    speechSynthesis.speak(utter(info ? info.sound : ch, 0.65));
   });
-  const whole = new SpeechSynthesisUtterance(word);
-  if (voice) whole.voice = voice; whole.rate = 0.8; speechSynthesis.speak(whole);
+  speechSynthesis.speak(utter(word, 0.8));
 }
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const AUTO_SPEECH_SUPPORTED = !!SpeechRec;
@@ -958,8 +984,7 @@ function speakAlong(text, container) {
   const spans = container ? Array.from(container.querySelectorAll(".rw")) : [];
   const offsets = []; let idx = 0;
   spans.forEach(s => { const w = s.textContent; const at = text.indexOf(w, idx); offsets.push(at < 0 ? idx : at); idx = (at < 0 ? idx : at) + w.length; });
-  const u = new SpeechSynthesisUtterance(text);
-  if (voice) u.voice = voice; u.rate = 0.82;
+  const u = utter(text, 0.82);
   u.onboundary = e => {
     if (e.charIndex == null) return;
     let hi = -1; for (let i = 0; i < offsets.length; i++) { if (offsets[i] <= e.charIndex) hi = i; else break; }
@@ -1264,6 +1289,19 @@ function parentDashboard() {
       <button class="btn green" id="backup">💾 Backup / Restore</button>
       <button class="btn grey" id="changePin">🔑 Change PIN</button>
     </div>
+    <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:10px">
+      <div class="sr-text"><b>🔊 Voice</b><br>
+        <span class="sr-sub">Pick a clear voice and speaking speed for reading and sounds.</span></div>
+      <select id="voiceSelect" class="voice-select">${
+        englishVoices().map(v => `<option value="${escapeHtml(v.voiceURI)}" ${voice && v.voiceURI === voice.voiceURI ? "selected" : ""}>${escapeHtml(v.name)}</option>`).join("")
+        || `<option>Default voice</option>`}</select>
+      <div class="rate-line">
+        <span class="sr-sub">🐢 Slower</span>
+        <input id="rateRange" type="range" min="0.6" max="0.95" step="0.05" value="${speechRate()}">
+        <span class="sr-sub">Faster 🐇</span>
+      </div>
+      <div class="btn-row" style="margin-top:0"><button class="btn green" id="voiceTest">🔊 Test voice</button></div>
+    </div>
     <div class="setting-row">
       <div class="sr-text"><b>🌐 Internet look-ups</b><br>
         <span class="sr-sub">Let Vocabulary fetch a picture &amp; pronunciation from Wikipedia and a dictionary. Off = fully offline.</span></div>
@@ -1274,6 +1312,12 @@ function parentDashboard() {
   screenEl.querySelectorAll(".child-row").forEach(r => r.addEventListener("click", () => childReport(r.dataset.id)));
   document.getElementById("addChild").onclick = () => showCreateProfile(false);
   document.getElementById("backup").onclick = () => backupScreen();
+  const vs = document.getElementById("voiceSelect");
+  if (vs) vs.onchange = () => { root.voiceURI = vs.value; saveRoot(); pickVoice(); speak("Hi! Let's read together."); };
+  const rr = document.getElementById("rateRange");
+  if (rr) rr.onchange = () => { root.voiceRate = parseFloat(rr.value); saveRoot(); speak("The sun is up."); };
+  const vt = document.getElementById("voiceTest");
+  if (vt) vt.onclick = () => speak("Hi! I am your reading helper. Let's sound it out: sun.");
   document.getElementById("onlineToggle").onclick = () => { root.onlineExtras = !root.onlineExtras; saveRoot(); parentDashboard(); };
   document.getElementById("changePin").onclick = () => {
     pinPad({ title: "New Parent PIN", sub: "Pick a new 4-digit code.", onDone: (v) => {

@@ -669,3 +669,11 @@ html, body {
 
 /* Speaking: rating sub-label */
 .rate-row .ct-sub { display: block; font-size: 13px; color: var(--muted); font-weight: 700; margin-top: 2px; }
+
+/* Voice settings */
+.voice-select {
+  width: 100%; padding: 12px 14px; border-radius: 14px; border: 3px solid #d7def2;
+  font-family: inherit; font-size: 16px; font-weight: 700; color: var(--ink); background: #fff;
+}
+.rate-line { display: flex; align-items: center; gap: 10px; }
+.rate-line input[type="range"] { flex: 1; accent-color: var(--blue); height: 28px; }
