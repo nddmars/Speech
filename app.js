@@ -670,29 +670,39 @@ function traceScreen(i) {
       <button class="btn grey" id="next">Next ›</button></div>`;
   const canvas = document.getElementById("pad");
   const doneBtn = document.getElementById("done");
-  let drew = 0;
+  const hintEl = screenEl.querySelector(".hint");
+  const baseHint = "Trace the " + (isLetter ? "letter" : "word") + " with your finger ✏️";
+  const dpr = window.devicePixelRatio || 1;
   const ctx = setupCanvas(canvas);
-  function drawGuide() {
-    const w = canvas.width / (window.devicePixelRatio || 1), h = canvas.height / (window.devicePixelRatio || 1);
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "#e5e9f5";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const fs = isLetter ? h * 0.8 : Math.min(h * 0.7, w / (it.text.length * 0.62));
-    ctx.font = "800 " + fs + "px 'Comic Sans MS', 'Baloo 2', system-ui, sans-serif";
-    ctx.fillText(isLetter ? it.text.toUpperCase() + it.text : it.text, w / 2, h / 2);
+  const cssW = canvas.width / dpr, cssH = canvas.height / dpr;
+  const text = isLetter ? it.text.toUpperCase() + it.text : it.text;
+  const fs = isLetter ? cssH * 0.8 : Math.min(cssH * 0.7, cssW / (it.text.length * 0.62));
+  const font = "800 " + fs + "px 'Comic Sans MS', 'Baloo 2', system-ui, sans-serif";
+  function glyph(c, opts) {
+    c.textAlign = "center"; c.textBaseline = "middle"; c.font = font; c.lineJoin = "round";
+    if (opts.stroke) { c.strokeStyle = opts.stroke; c.lineWidth = opts.lineWidth || 20; c.strokeText(text, cssW / 2, cssH / 2); }
+    if (opts.fill) { c.fillStyle = opts.fill; c.fillText(text, cssW / 2, cssH / 2); }
   }
+  // Hidden "answer" layers used only to check the trace (never shown).
+  function layer() { const cv = document.createElement("canvas"); cv.width = canvas.width; cv.height = canvas.height; const x = cv.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0); return { cv, x }; }
+  const core = layer(), wide = layer(), ink = layer();
+  glyph(core.x, { fill: "#000" });                                    // the exact letter shape
+  glyph(wide.x, { fill: "#000", stroke: "#000", lineWidth: 26 });     // letter + tolerance band
+  function drawGuide() { ctx.clearRect(0, 0, cssW, cssH); glyph(ctx, { fill: "#e5e9f5" }); }
   drawGuide();
-  let drawing = false, lastX = 0, lastY = 0;
+
+  const penColor = getComputedStyle(document.documentElement).getPropertyValue("--blue").trim() || "#5b7cfa";
+  let drawing = false, lastX = 0, lastY = 0, drew = 0;
   function pos(e) { const r = canvas.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: p.clientX - r.left, y: p.clientY - r.top }; }
+  function seg(c, x0, y0, x1, y1, wdt, col) { c.strokeStyle = col; c.lineWidth = wdt; c.lineCap = "round"; c.lineJoin = "round"; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
   function down(e) { e.preventDefault(); drawing = true; const p = pos(e); lastX = p.x; lastY = p.y; }
   function move(e) {
     if (!drawing) return; e.preventDefault();
     const p = pos(e);
-    ctx.strokeStyle = "var(--blue)"; ctx.lineWidth = 14; ctx.lineCap = "round"; ctx.lineJoin = "round";
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--blue").trim() || "#5b7cfa";
-    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    seg(ctx, lastX, lastY, p.x, p.y, 14, penColor);   // visible blue ink
+    seg(ink.x, lastX, lastY, p.x, p.y, 20, "#000");   // matching ink on the hidden layer
     lastX = p.x; lastY = p.y; drew++;
-    if (drew > 12) doneBtn.disabled = false;
+    if (drew > 10) doneBtn.disabled = false;
   }
   function up() { drawing = false; }
   canvas.addEventListener("pointerdown", down); canvas.addEventListener("pointermove", move);
@@ -700,14 +710,44 @@ function traceScreen(i) {
   canvas.addEventListener("touchstart", down, { passive: false });
   canvas.addEventListener("touchmove", move, { passive: false });
   document.getElementById("say").onclick = () => isLetter ? speak(it.say, 0.7) : speak(it.text);
-  document.getElementById("clear").onclick = () => { drew = 0; doneBtn.disabled = true; drawGuide(); };
+  document.getElementById("clear").onclick = () => {
+    drew = 0; doneBtn.disabled = true; ink.x.clearRect(0, 0, cssW, cssH); drawGuide();
+    if (hintEl) hintEl.textContent = baseHint;
+  };
+  // Testing hook (harmless): lets automated tests score a trace.
+  window.__trace = { core, wide, ink, W: canvas.width, H: canvas.height, score: () => scoreTrace(core.x, wide.x, ink.x, canvas.width, canvas.height) };
   doneBtn.onclick = () => {
-    if (!store.writing.traced[key]) { store.writing.traced[key] = true; addStar(1); }
-    saveStore(); celebrate();
+    const s = scoreTrace(core.x, wide.x, ink.x, canvas.width, canvas.height);
+    if (s.ok) {
+      if (!store.writing.traced[key]) { store.writing.traced[key] = true; addStar(1); }
+      saveStore(); celebrate();
+    } else {
+      dingBad();
+      if (hintEl) hintEl.textContent = "Almost! Trace right on the gray " + (isLetter ? "letter" : "word") + ". Try again ✏️";
+      speak(isLetter ? "Let's trace the letter " + it.text : "Let's trace the word " + it.text, 0.85);
+    }
   };
   document.getElementById("prev").onclick = () => traceScreen((i - 1 + targets.length) % targets.length);
   document.getElementById("next").onclick = () => traceScreen((i + 1) % targets.length);
   if (isLetter) speak(it.say, 0.7); else speak(it.text);
+}
+/* Score a trace: how much of the letter the ink covers, and how much ink
+   strayed outside the letter (plus a tolerance band). Rewards a real trace,
+   rejects scribbles and wrong letters. */
+function scoreTrace(coreCtx, wideCtx, inkCtx, W, H) {
+  const c = coreCtx.getImageData(0, 0, W, H).data;
+  const w = wideCtx.getImageData(0, 0, W, H).data;
+  const k = inkCtx.getImageData(0, 0, W, H).data;
+  let target = 0, covered = 0, inkTot = 0, inkOut = 0;
+  for (let i = 3; i < c.length; i += 4) {
+    const ct = c[i] > 20, wt = w[i] > 20, kt = k[i] > 20;
+    if (ct) { target++; if (kt) covered++; }
+    if (kt) { inkTot++; if (!wt) inkOut++; }
+  }
+  const coverage = target ? covered / target : 0;   // how much of the letter was traced
+  const overflow = inkTot ? inkOut / inkTot : 1;     // how much ink missed the letter
+  const ok = inkTot > 300 && coverage >= 0.35 && overflow <= 0.55;
+  return { coverage, overflow, inkTot, ok };
 }
 function setupCanvas(canvas) {
   const dpr = window.devicePixelRatio || 1;
