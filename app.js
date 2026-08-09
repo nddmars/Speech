@@ -10,7 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
-const APP_VERSION = "v9";
+const APP_VERSION = "v10";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;

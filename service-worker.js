@@ -1,6 +1,9 @@
-/* Simple offline cache so Star Readers works without internet
-   once it has been opened once (great for iPad on the go). */
-const CACHE = "star-readers-v9";
+/* Offline cache for Star Readers.
+   Strategy: NETWORK-FIRST for our own files, so when the iPad is online it
+   always gets the latest code (no more stale-cache surprises), and falls back
+   to the cache only when offline. Cross-origin requests (Wikipedia / dictionary
+   look-ups and their audio) bypass the worker entirely. */
+const CACHE = "star-readers-v10";
 const ASSETS = [
   "index.html",
   "styles.css",
@@ -28,12 +31,15 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
+  const req = event.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin !== location.origin) return; // let cross-origin pass straight through
   event.respondWith(
-    caches.match(event.request).then(hit => hit || fetch(event.request).then(res => {
+    fetch(req).then(res => {
       const copy = res.clone();
-      caches.open(CACHE).then(c => c.put(event.request, copy)).catch(() => {});
+      caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
       return res;
-    }).catch(() => caches.match("index.html")))
+    }).catch(() => caches.match(req).then(hit => hit || caches.match("index.html")))
   );
 });
