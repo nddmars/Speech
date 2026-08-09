@@ -134,7 +134,7 @@ function showAppChrome() {
   renderStarCount(); applyTheme();
 }
 
-let mediaRecorder = null, recChunks = [], recordedUrl = null, recordedBlob = null, activeRecognition = null, roundTimer = null;
+let recStream = null, recSource = null, recProcessor = null, recMute = null, recBuffers = [], recSampleRate = 44100, recordedAudio = null, activeRecognition = null, roundTimer = null;
 function stopEverything() {
   if (window.speechSynthesis) speechSynthesis.cancel();
   stopRecorderTracks();
@@ -474,8 +474,14 @@ function gameWordMatch() {
 /* ============================================================
    8. SPEAKING — words & sentences (Private / Auto-check)
    ============================================================ */
-const recSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-function stopRecorderTracks() { if (mediaRecorder && mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop()); mediaRecorder = null; }
+const recSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia &&
+  (window.AudioContext || window.webkitAudioContext));
+function stopRecorderTracks() {
+  try { if (recProcessor) { recProcessor.disconnect(); recProcessor.onaudioprocess = null; recProcessor = null; } } catch (e) {}
+  try { if (recSource) { recSource.disconnect(); recSource = null; } } catch (e) {}
+  try { if (recMute) { recMute.disconnect(); recMute = null; } } catch (e) {}
+  try { if (recStream) { recStream.getTracks().forEach(t => t.stop()); recStream = null; } } catch (e) {}
+}
 function todayKey() { const d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
 function logSpeech(text, sound, result, mode, isSentence) {
   store.speechLog.push({ word: text, sound: isSentence ? "sentence" : sound, result, mode, day: todayKey() });
@@ -487,8 +493,7 @@ function logSpeech(text, sound, result, mode, isSentence) {
 }
 function speechList(items, isSentence, i) {
   stopEverything();
-  if (recordedUrl) { URL.revokeObjectURL(recordedUrl); recordedUrl = null; }
-  recordedBlob = null;
+  recordedAudio = null;
   setBack(() => speakMenu());
   const it = items[i];
   const auto = store.speechMode === "auto" && AUTO_SPEECH_SUPPORTED;
@@ -539,39 +544,52 @@ function speechList(items, isSentence, i) {
   else if (recSupported) wireRecorder(showRating);
   speak(text, isSentence ? 0.85 : 0.8);
 }
-/* Choose a recording format the browser actually supports. iOS Safari
-   records audio/mp4 (AAC); Chrome/Firefox record webm/opus. */
-function pickRecMime() {
-  const cands = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/aac", "audio/ogg"];
-  if (window.MediaRecorder && MediaRecorder.isTypeSupported) {
-    for (const c of cands) if (MediaRecorder.isTypeSupported(c)) return c;
-  }
-  return "";
+/* Record the microphone with the Web Audio API (raw PCM) instead of
+   MediaRecorder. MediaRecorder is unreliable on iPad Safari (often
+   captures nothing or produces MP4 that won't play back). Capturing raw
+   samples and replaying them through an AudioBuffer works everywhere. */
+async function startRecording() {
+  recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") await audioCtx.resume();
+  recSampleRate = audioCtx.sampleRate;
+  recBuffers = [];
+  recSource = audioCtx.createMediaStreamSource(recStream);
+  recProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+  recProcessor.onaudioprocess = e => {
+    recBuffers.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  };
+  recMute = audioCtx.createGain(); recMute.gain.value = 0; // silent, avoids feedback
+  recSource.connect(recProcessor); recProcessor.connect(recMute); recMute.connect(audioCtx.destination);
 }
-/* Decode + play the recording via the Web Audio API. This is far more
-   reliable than an <audio> element on iOS Safari, whose MediaRecorder
-   output (fragmented MP4) often won't play in <audio> for lack of a
-   duration. Falls back to <audio> if decoding isn't available. */
+function stopRecording() {
+  const len = recBuffers.reduce((n, b) => n + b.length, 0);
+  if (len) {
+    const data = new Float32Array(len); let o = 0;
+    recBuffers.forEach(b => { data.set(b, o); o += b.length; });
+    recordedAudio = { data, sampleRate: recSampleRate };
+  } else {
+    recordedAudio = null;
+  }
+  stopRecorderTracks();
+}
 async function playRecording(hintEl) {
-  if (!recordedBlob || !recordedBlob.size) { if (hintEl) hintEl.textContent = "No recording yet — tap 🎤 Record first."; return false; }
+  if (!recordedAudio || !recordedAudio.data.length) {
+    if (hintEl) hintEl.textContent = "No recording yet — tap 🎤 Record first."; return false;
+  }
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") await audioCtx.resume();
-    const arr = await recordedBlob.arrayBuffer();
-    const audioBuf = await new Promise((res, rej) => {
-      const p = audioCtx.decodeAudioData(arr.slice(0), res, rej);
-      if (p && p.then) p.then(res, rej);
-    });
+    const buf = audioCtx.createBuffer(1, recordedAudio.data.length, recordedAudio.sampleRate);
+    if (buf.copyToChannel) buf.copyToChannel(recordedAudio.data, 0);
+    else buf.getChannelData(0).set(recordedAudio.data);
     const src = audioCtx.createBufferSource();
-    src.buffer = audioBuf; src.connect(audioCtx.destination); src.start(0);
+    src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
     return true;
-  } catch (e) {}
-  try {
-    const a = new Audio(); a.src = recordedUrl || URL.createObjectURL(recordedBlob);
-    await a.play(); return true;
-  } catch (e) {}
-  if (hintEl) hintEl.textContent = "Hmm, couldn't play that back. Try recording again. 🎙️";
-  return false;
+  } catch (e) {
+    if (hintEl) hintEl.textContent = "Hmm, couldn't play that back. Try recording again. 🎙️";
+    return false;
+  }
 }
 function wireRecorder(onRecorded) {
   const recBtn = document.getElementById("recBtn"), playBtn = document.getElementById("playBtn");
@@ -579,28 +597,15 @@ function wireRecorder(onRecorded) {
   recBtn.onclick = async () => {
     if (!recording) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        recChunks = [];
-        const mime = pickRecMime();
-        mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-        mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
-        mediaRecorder.onstop = () => {
-          // Stop the mic tracks only now — after the final chunk has arrived.
-          stream.getTracks().forEach(t => t.stop());
-          const type = mediaRecorder.mimeType || mime || "audio/mp4";
-          recordedBlob = new Blob(recChunks, { type });
-          if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-          recordedUrl = recordedBlob.size ? URL.createObjectURL(recordedBlob) : null;
-          playBtn.disabled = !recordedBlob.size;
-          onRecorded();
-        };
-        // Timeslice makes dataavailable fire periodically — more reliable on iOS.
-        mediaRecorder.start(200);
-        recording = true; recBtn.textContent = "⏹ Stop"; recBtn.classList.add("rec-on");
+        await startRecording();
+        recording = true; playBtn.disabled = true;
+        recBtn.textContent = "⏹ Stop"; recBtn.classList.add("rec-on");
       } catch (err) { alert("Please allow the microphone so we can record. 🎙️"); }
     } else {
+      stopRecording();
       recording = false; recBtn.textContent = "🎤 Record"; recBtn.classList.remove("rec-on");
-      try { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); } catch (e) {}
+      playBtn.disabled = !(recordedAudio && recordedAudio.data.length);
+      onRecorded();
     }
   };
   playBtn.onclick = async () => {
