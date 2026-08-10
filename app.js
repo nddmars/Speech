@@ -10,7 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
-const APP_VERSION = "v15";
+const APP_VERSION = "v16";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;
@@ -335,9 +335,10 @@ function speakMenu() {
   ], showHome);
 }
 function writeMenu() {
-  submenu("Writing ✍️", "Trace letters and words, then spell what you hear.", [
+  submenu("Writing ✍️", "Trace, spell, and type to build focus.", [
     { emoji: "✏️", label: "Tracing", sub: "Letters & words", go: () => traceScreen(0) },
     { emoji: "👂", label: "Dictation", sub: "Write what you hear", go: () => dictation(0) },
+    { emoji: "⌨️", label: "Focus Type", sub: "Keep your focus up!", go: focusType },
   ], showHome);
 }
 function langMenu() {
@@ -446,6 +447,121 @@ function finishRound({ title, correct, total, starsEarned, streak, extra = "", a
         <button class="btn grey" id="home">🏠 Home</button></div></div>`;
   document.getElementById("home").onclick = showHome;
   document.getElementById("again").onclick = again;
+}
+/* ⌨️ Focus Type — a calm, focus-building typing game.
+   One word at a time. A "focus meter" slowly drains, so the player must keep
+   typing accurately to keep it up. Correct words refill it; wrong keys nudge
+   it down and reset the streak (training careful attention). Fill it to the
+   top for a "Super Focus!" star. Round ends when the meter empties. */
+function focusType() {
+  setBack(writeMenu);
+  const pool = Array.from(new Set(
+    ALL_WORDS.map(w => w.w).concat(typeof VOCAB !== "undefined" ? VOCAB.map(v => v.w) : [])
+  )).filter(w => /^[a-z]+$/.test(w));
+  const pickWord = level => {
+    const maxLen = level <= 1 ? 4 : level <= 2 ? 5 : level <= 3 ? 6 : 20;
+    const minLen = level <= 1 ? 3 : 4;
+    const cands = pool.filter(w => w.length >= minLen && w.length <= maxLen);
+    return cands.length ? cands[Math.floor(Math.random() * cands.length)] : (pool[0] || "cat");
+  };
+
+  let meter = 65, score = 0, streak = 0, best = 0, superStars = 0, words = 0, target = "";
+  const levelOf = () => 1 + Math.floor(score / 5);
+
+  screenEl.innerHTML = `
+    <div class="game-top">
+      <div class="chip">⭐ <span id="ftScore">0</span></div>
+      <div class="chip">🔥 <span id="ftStreak">0</span></div>
+      <div class="chip">Lvl <span id="ftLvl">1</span></div>
+    </div>
+    <div class="focus-wrap">
+      <div class="focus-label">Focus 🧠</div>
+      <div class="focus-track"><div class="focus-fill" id="focusFill"></div></div>
+    </div>
+    <div class="stage">
+      <div class="hint" id="ftHint">Type the word to keep your focus up! ⌨️</div>
+      <div class="type-target" id="tgt"></div>
+      <input id="ftIn" class="type-in" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="latin" placeholder="type…" />
+      <div class="btn-row">
+        <button class="btn green" id="ftSay">🔊 Hear</button>
+        <button class="btn grey" id="ftStop">⏹ Stop</button>
+      </div>
+    </div>`;
+
+  const input = document.getElementById("ftIn");
+  const tgtEl = document.getElementById("tgt");
+  const fill = document.getElementById("focusFill");
+  const setChip = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const renderTarget = val => {
+    tgtEl.innerHTML = target.split("").map((ch, k) =>
+      `<span class="${k < val.length ? "tc-done" : (k === val.length ? "tc-next" : "tc-todo")}">${ch}</span>`).join("");
+  };
+  const updateMeter = () => {
+    meter = Math.max(0, Math.min(100, meter));
+    fill.style.width = meter + "%";
+    fill.className = "focus-fill " + (meter < 30 ? "low" : meter < 65 ? "mid" : "high");
+  };
+  const nextWord = () => {
+    let w = pickWord(levelOf()), tries = 0;
+    while (w === target && tries++ < 6) w = pickWord(levelOf());
+    target = w; words++;
+    input.value = ""; renderTarget(""); input.focus();
+    setChip("ftLvl", levelOf());
+  };
+  const endGame = () => {
+    stopEverything();
+    if (best > (store.games.bestStreak || 0)) store.games.bestStreak = best;
+    if (score > (store.games.bestFocus || 0)) store.games.bestFocus = score;
+    const stars = superStars + Math.floor(score / 4);
+    addStar(stars); saveStore();
+    screenEl.innerHTML = `
+      <div class="stage"><div class="big-emoji">🧠</div>
+        <div class="big-letter" style="font-size:60px">${stars} ⭐</div>
+        <div class="hint">Focus Type: ${score} words, best streak ${best}${superStars ? ` · ${superStars} Super Focus!` : ""}</div>
+        <div class="btn-row">
+          <button class="btn green" id="again">🔁 Play again</button>
+          <button class="btn grey" id="home">🏠 Home</button></div></div>`;
+    document.getElementById("again").onclick = focusType;
+    document.getElementById("home").onclick = showHome;
+  };
+
+  input.addEventListener("input", () => {
+    let val = input.value.toLowerCase().replace(/[^a-z]/g, "");
+    if (target.startsWith(val)) {
+      renderTarget(val);
+      if (val === target) {
+        // word complete
+        score++; streak++; best = Math.max(best, streak);
+        meter += 10 + target.length * 2 + Math.min(streak, 10);
+        setChip("ftScore", score); setChip("ftStreak", streak);
+        dingGood();
+        if (meter >= 100) { // Super Focus!
+          superStars++; addStar(1); confettiBurst(); meter = 70;
+          const h = document.getElementById("ftHint"); if (h) h.textContent = "🌟 Super Focus! Keep going!";
+        }
+        updateMeter(); nextWord();
+      }
+    } else {
+      // a wrong key: penalize, keep the correct part, flash
+      let k = 0; while (k < val.length && k < target.length && val[k] === target[k]) k++;
+      input.value = target.slice(0, k);
+      renderTarget(input.value);
+      streak = 0; setChip("ftStreak", 0);
+      meter -= 4; updateMeter();
+      tgtEl.classList.add("shake"); dingBad();
+      setTimeout(() => tgtEl.classList.remove("shake"), 300);
+    }
+  });
+  input.addEventListener("keydown", e => { if (e.key === "Enter") e.preventDefault(); });
+  document.getElementById("ftSay").onclick = () => speak(target);
+  document.getElementById("ftStop").onclick = endGame;
+
+  updateMeter(); nextWord();
+  // The focus meter drains slowly; keep typing to keep it up.
+  roundTimer = setInterval(() => {
+    meter -= 0.7; updateMeter();
+    if (meter <= 0) endGame();
+  }, 100);
 }
 function choiceRound({ items, prompt, render, back, again, title, label }) {
   setBack(back);
