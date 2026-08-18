@@ -10,7 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
-const APP_VERSION = "v16";
+const APP_VERSION = "v17";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;
@@ -292,6 +292,9 @@ function showHome() {
       <div class="menu-card c5" data-go="lang">
         <div class="emoji">🧩</div><div class="label">Language</div>
         <div class="sub">Questions &amp; more</div></div>
+      <div class="menu-card c1" data-go="chess">
+        <div class="emoji">♟️</div><div class="label">Chess</div>
+        <div class="sub">Puzzles for A+ contest</div></div>
       <div class="menu-card c6" data-go="themes">
         <div class="emoji">🎨</div><div class="label">Themes</div>
         <div class="sub">Unlock buddies</div></div>
@@ -310,6 +313,7 @@ function showHome() {
     if (go === "words")   isGame ? gameWordMatch() : showWordSetPicker();
     if (go === "read")    readingHub();
     if (go === "lang")    langMenu();
+    if (go === "chess")   chessMenu();
     if (go === "themes")  showThemes();
   }));
 }
@@ -347,6 +351,114 @@ function langMenu() {
     { emoji: "🔍", label: "What's Missing", sub: "Spot the missing one", go: missingGame },
     { emoji: "🔢", label: "Sequencing", sub: "Put it in order", go: () => seqGame(0) },
   ], showHome);
+}
+
+/* ============================================================
+   CHESS — A+ UIL Chess Puzzle practice
+   ============================================================ */
+function chessMenu() {
+  submenu("Chess ♟️", "Practice puzzles like the A+ Chess contest (grades 2–8).", [
+    { emoji: "♟️", label: "Puzzles", sub: "Multiple-choice board questions", go: chessPuzzles },
+    { emoji: "📚", label: "Learn", sub: "Pieces, moves & values", go: chessLearn },
+    { emoji: "🔗", label: "Practice online", sub: "Official UIL & kid sites", go: chessResources },
+  ], showHome);
+}
+/* Render a board from a placement like {e4:"wN", e5:"bP"}. */
+function renderBoard(board, opts) {
+  opts = opts || {};
+  const G = { K: "♚", Q: "♛", R: "♜", B: "♝", N: "♞", P: "♟" };
+  const files = "abcdefgh";
+  let sq = "";
+  for (let rank = 8; rank >= 1; rank--) {
+    for (let f = 0; f < 8; f++) {
+      const name = files[f] + rank;
+      const dark = (f + rank) % 2 === 1;
+      const code = board[name];
+      const hi = opts.highlight && opts.highlight.indexOf(name) >= 0 ? " hi" : "";
+      let piece = "";
+      if (code) piece = `<span class="pc ${code[0] === "w" ? "wp" : "bp"}">${G[code[1]]}</span>`;
+      sq += `<div class="sq ${dark ? "d" : "l"}${hi}">${piece}</div>`;
+    }
+  }
+  const ranks = [8, 7, 6, 5, 4, 3, 2, 1].map(r => `<div>${r}</div>`).join("");
+  const filesRow = files.split("").map(f => `<div>${f}</div>`).join("");
+  return `<div class="chess"><div class="ranks">${ranks}</div>
+    <div class="boardcol"><div class="board">${sq}</div><div class="files">${filesRow}</div></div></div>`;
+}
+function chessPuzzles() {
+  setBack(chessMenu);
+  const rounds = shuffle(CHESS_PUZZLES).slice(0, 8);
+  let idx = 0, correct = 0, streak = 0, best = 0;
+  function step() {
+    if (idx >= rounds.length)
+      return finishRound({ title: "Chess Puzzles", correct, total: rounds.length, starsEarned: correct, streak: best, again: chessPuzzles });
+    const p = rounds[idx];
+    screenEl.innerHTML = `
+      <div class="game-top"><div class="chip">${idx + 1}/${rounds.length}</div>
+        <div class="chip">🔥 ${streak}</div><div class="chip">⭐ ${correct}</div></div>
+      <div class="stage">
+        ${renderBoard(p.board, { highlight: p.highlight })}
+        <div class="q-text">${escapeHtml(p.ask)}</div>
+        <div class="choice-grid words chess-opts">
+          ${shuffle(p.options).map(o => `<button class="choice" data-k="${escapeHtml(o)}">${escapeHtml(o)}</button>`).join("")}
+        </div>
+        <div id="chessFb" class="chess-fb"></div>
+      </div>`;
+    screenEl.querySelectorAll(".choice").forEach(btn => btn.onclick = () => {
+      const right = btn.dataset.k === p.answer;
+      btn.classList.add(right ? "right" : "wrong");
+      if (right) { correct++; streak++; best = Math.max(best, streak); dingGood(); }
+      else { streak = 0; dingBad(); const rb = screenEl.querySelector(`.choice[data-k="${cssEsc(p.answer)}"]`); if (rb) rb.classList.add("right"); }
+      screenEl.querySelectorAll(".choice").forEach(b => b.disabled = true);
+      const fb = document.getElementById("chessFb");
+      if (fb) fb.innerHTML = `${right ? "✅ Correct! " : "❌ Answer: <b>" + escapeHtml(p.answer) + "</b>. "}${escapeHtml(p.tip || "")}`;
+      const row = document.createElement("div"); row.className = "btn-row";
+      const nb = document.createElement("button"); nb.className = "btn green";
+      nb.textContent = idx === rounds.length - 1 ? "See stars ›" : "Next ›";
+      nb.onclick = () => { idx++; step(); };
+      row.appendChild(nb); screenEl.querySelector(".stage").appendChild(row);
+    });
+  }
+  step();
+}
+function chessLearn() {
+  setBack(chessMenu);
+  screenEl.innerHTML = `
+    <h2 class="section-title">Learn Chess 📚</h2>
+    <div class="stage" style="text-align:left">
+      <h3 class="section-title" style="font-size:18px">The pieces &amp; how they move</h3>
+      <ul class="chess-list">
+        <li><span class="pc bp big">♙</span><b>Pawn</b> — forward 1 (or 2 on its first move); captures diagonally. Worth <b>1</b>.</li>
+        <li><span class="pc bp big">♘</span><b>Knight</b> — jumps in an “L”, and can jump over pieces. Worth <b>3</b>.</li>
+        <li><span class="pc bp big">♗</span><b>Bishop</b> — moves diagonally any distance. Worth <b>3</b>.</li>
+        <li><span class="pc bp big">♖</span><b>Rook</b> — moves in straight lines (up/down/side). Worth <b>5</b>.</li>
+        <li><span class="pc bp big">♕</span><b>Queen</b> — straight <i>and</i> diagonal. The strongest piece. Worth <b>9</b>.</li>
+        <li><span class="pc bp big">♔</span><b>King</b> — one square any direction. Keep it safe!</li>
+      </ul>
+      <h3 class="section-title" style="font-size:18px">Words to know</h3>
+      <ul class="chess-list">
+        <li><b>Check</b> — the king is being attacked.</li>
+        <li><b>Checkmate</b> — the king is in check and can't escape. Game over!</li>
+        <li><b>Stalemate</b> — no legal move but <i>not</i> in check → it's a draw.</li>
+        <li><b>En passant</b> — a special pawn capture right after a pawn jumps two squares.</li>
+      </ul>
+      <h3 class="section-title" style="font-size:18px">Reading the board</h3>
+      <p>Squares are named by <b>file</b> (letters a–h, left to right) then <b>rank</b> (numbers 1–8, bottom to top). So the highlighted square below is <b>e4</b>:</p>
+      ${renderBoard({ e4: "wN" }, { highlight: ["e4"] })}
+    </div>
+    <div class="btn-row"><button class="btn green" id="doPuzzles">♟️ Try puzzles</button></div>`;
+  document.getElementById("doPuzzles").onclick = chessPuzzles;
+}
+function chessResources() {
+  setBack(chessMenu);
+  screenEl.innerHTML = `
+    <h2 class="section-title">Practice online 🔗</h2>
+    <p class="section-sub">Official UIL materials and kid-friendly chess sites. These open the internet in a new tab.</p>
+    <div class="link-list">
+      ${CHESS_LINKS.map(l => `<a class="link-row" href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">
+        <span class="lr-e">${l.emoji}</span><span class="lr-t">${escapeHtml(l.label)}</span><span class="lr-go">↗</span></a>`).join("")}
+    </div>
+    <p class="note">Grown-up tip: the “Sample Test, Key &amp; Answer Sheet” and “Sample Questions” PDFs are great to print and practice on paper, just like the real contest.</p>`;
 }
 
 /* ============================================================

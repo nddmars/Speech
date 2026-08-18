@@ -699,3 +699,42 @@ html, body {
 .type-target .tc-next { color: var(--blue); text-decoration: underline; text-underline-offset: 8px; }
 .type-target .tc-todo { color: #c3cbe2; }
 .type-target.shake { animation: shake 0.3s; }
+
+/* ============================================================
+   Chess board + puzzles
+   ============================================================ */
+.chess { display: flex; gap: 6px; justify-content: center; align-items: stretch; margin: 6px 0 12px; }
+.ranks { display: flex; flex-direction: column; width: 15px; }
+.ranks > div { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: var(--muted); }
+.boardcol { display: flex; flex-direction: column; }
+.board {
+  width: min(84vw, 340px); aspect-ratio: 1 / 1;
+  display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+  border-radius: 8px; overflow: hidden; box-shadow: var(--shadow);
+}
+.sq { display: flex; align-items: center; justify-content: center; }
+.sq.l { background: #eeeed2; }
+.sq.d { background: #7fa650; }
+.sq.hi { box-shadow: inset 0 0 0 4px rgba(255, 193, 7, 0.95); }
+.pc { font-size: min(9vw, 34px); line-height: 1; }
+.pc.wp { color: #ffffff; text-shadow: 0 0 2px rgba(0,0,0,0.75), 0 1px 2px rgba(0,0,0,0.55); }
+.pc.bp { color: #202020; text-shadow: 0 1px 1px rgba(255,255,255,0.35); }
+.pc.big { font-size: 30px; margin-right: 6px; vertical-align: middle; }
+.files { display: flex; width: min(84vw, 340px); }
+.files > div { flex: 1; text-align: center; font-weight: 800; color: var(--muted); font-size: 12px; padding-top: 2px; }
+.chess-fb { font-size: 16px; color: var(--ink); margin-top: 12px; line-height: 1.4; min-height: 22px; }
+
+.chess-list { list-style: none; padding: 0; margin: 6px 0 10px; }
+.chess-list li { padding: 8px 0; border-bottom: 1px solid #eef1f9; font-size: 16px; line-height: 1.4; }
+
+/* Resource links */
+.link-list { display: flex; flex-direction: column; gap: 10px; }
+.link-row {
+  display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 16px;
+  padding: 14px 16px; box-shadow: var(--shadow); text-decoration: none; color: var(--ink);
+}
+.link-row:active { transform: scale(0.98); }
+.lr-e { font-size: 26px; }
+.lr-t { flex: 1; font-weight: 800; font-size: 15px; }
+.lr-go { color: var(--blue); font-weight: 800; font-size: 20px; }
+.choice-grid.chess-opts .choice { text-transform: none; font-size: 24px; }
