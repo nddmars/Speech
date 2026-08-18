@@ -738,3 +738,11 @@ html, body {
 .lr-t { flex: 1; font-weight: 800; font-size: 15px; }
 .lr-go { color: var(--blue); font-weight: 800; font-size: 20px; }
 .choice-grid.chess-opts .choice { text-transform: none; font-size: 24px; }
+
+/* Chess timed-test review */
+.rev-list { display: flex; flex-direction: column; gap: 10px; }
+.rev { background: var(--card); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); border-left: 6px solid var(--green); }
+.rev.no { border-left-color: var(--pink); }
+.rev-q { font-weight: 800; font-size: 15px; }
+.rev-a { font-size: 15px; margin-top: 3px; }
+.rev-t { font-size: 13px; color: var(--muted); margin-top: 3px; }

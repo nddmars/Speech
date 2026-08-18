@@ -10,7 +10,7 @@
 /* ============================================================
    1. STORAGE: root (profiles + PIN) and per-profile progress
    ============================================================ */
-const APP_VERSION = "v17";
+const APP_VERSION = "v18";
 const ROOT_KEY = "starReaders.root";
 let root = loadRoot();
 let activeId = null;
@@ -358,10 +358,24 @@ function langMenu() {
    ============================================================ */
 function chessMenu() {
   submenu("Chess ♟️", "Practice puzzles like the A+ Chess contest (grades 2–8).", [
-    { emoji: "♟️", label: "Puzzles", sub: "Multiple-choice board questions", go: chessPuzzles },
+    { emoji: "♟️", label: "Puzzles", sub: "Practice with hints", go: () => chessDivPicker("practice") },
+    { emoji: "⏱️", label: "Timed Test", sub: "Contest-style, against the clock", go: () => chessDivPicker("test") },
     { emoji: "📚", label: "Learn", sub: "Pieces, moves & values", go: chessLearn },
     { emoji: "🔗", label: "Practice online", sub: "Official UIL & kid sites", go: chessResources },
   ], showHome);
+}
+function poolFor(div) { return (!div || div === "all") ? CHESS_PUZZLES : CHESS_PUZZLES.filter(p => p.div === div); }
+function divLabel(div) { const d = CHESS_DIVISIONS.find(x => x.id === div); return d ? d.label : "Mixed"; }
+function chessDivPicker(mode) {
+  const items = CHESS_DIVISIONS.map(d => ({
+    emoji: d.emoji, label: d.label,
+    sub: `${poolFor(d.id).length} questions`,
+    go: () => mode === "test" ? chessTest(d.id) : chessPuzzles(d.id),
+  }));
+  if (mode === "practice") items.push({ emoji: "🎲", label: "Mixed", sub: "All divisions", go: () => chessPuzzles("all") });
+  submenu(mode === "test" ? "Timed Test ⏱️" : "Chess Puzzles ♟️",
+    mode === "test" ? "Pick a division, then answer against the clock (+1 each, no penalty)." : "Pick a division to practice with hints.",
+    items, chessMenu);
 }
 /* Render a board from a placement like {e4:"wN", e5:"bP"}. */
 function renderBoard(board, opts) {
@@ -385,13 +399,13 @@ function renderBoard(board, opts) {
   return `<div class="chess"><div class="ranks">${ranks}</div>
     <div class="boardcol"><div class="board">${sq}</div><div class="files">${filesRow}</div></div></div>`;
 }
-function chessPuzzles() {
-  setBack(chessMenu);
-  const rounds = shuffle(CHESS_PUZZLES).slice(0, 8);
+function chessPuzzles(div) {
+  setBack(() => chessDivPicker("practice"));
+  const rounds = shuffle(poolFor(div)).slice(0, 8);
   let idx = 0, correct = 0, streak = 0, best = 0;
   function step() {
     if (idx >= rounds.length)
-      return finishRound({ title: "Chess Puzzles", correct, total: rounds.length, starsEarned: correct, streak: best, again: chessPuzzles });
+      return finishRound({ title: "Chess Puzzles", correct, total: rounds.length, starsEarned: correct, streak: best, again: () => chessPuzzles(div) });
     const p = rounds[idx];
     screenEl.innerHTML = `
       <div class="game-top"><div class="chip">${idx + 1}/${rounds.length}</div>
@@ -420,6 +434,78 @@ function chessPuzzles() {
     });
   }
   step();
+}
+/* Timed, contest-style test: answer as many as you can before time runs out.
+   No per-question feedback (like the real test); review + score at the end.
+   +1 per correct, no penalty for wrong or blank. */
+function chessTest(div) {
+  setBack(() => chessDivPicker("test"));
+  const qs = shuffle(poolFor(div));
+  const perQ = 45; // seconds budget per question
+  let left = qs.length * perQ;      // total seconds
+  let idx = 0;
+  const answers = new Array(qs.length).fill(null);
+
+  const mmss = s => Math.floor(s / 60) + ":" + String(Math.max(0, s % 60)).padStart(2, "0");
+  function render() {
+    if (idx >= qs.length) return finishTest();
+    const p = qs[idx];
+    screenEl.innerHTML = `
+      <div class="game-top">
+        <div class="chip">Q ${idx + 1}/${qs.length}</div>
+        <div class="chip" id="clock">⏱️ ${mmss(left)}</div>
+        <div class="chip">${divLabel(div)}</div>
+      </div>
+      <div class="stage">
+        ${renderBoard(p.board, { highlight: p.highlight })}
+        <div class="q-text">${escapeHtml(p.ask)}</div>
+        <div class="choice-grid words chess-opts">
+          ${shuffle(p.options).map(o => `<button class="choice" data-k="${escapeHtml(o)}">${escapeHtml(o)}</button>`).join("")}
+        </div>
+        <div class="btn-row"><button class="btn grey" id="skip">Skip ›</button></div>
+      </div>`;
+    screenEl.querySelectorAll(".choice").forEach(btn => btn.onclick = () => {
+      answers[idx] = btn.dataset.k; idx++; render();
+    });
+    document.getElementById("skip").onclick = () => { idx++; render(); };
+  }
+  function finishTest() {
+    stopEverything();
+    let score = 0;
+    qs.forEach((p, i) => { if (answers[i] === p.answer) score++; });
+    const stars = Math.max(score >= qs.length && qs.length ? 1 : 0, Math.floor(score / 2));
+    addStar(stars);
+    if (score > (store.games.bestChessTest || 0)) store.games.bestChessTest = score;
+    saveStore();
+    const review = qs.map((p, i) => {
+      const yours = answers[i], ok = yours === p.answer;
+      return `<div class="rev ${ok ? "ok" : "no"}">
+        <div class="rev-q">${i + 1}. ${escapeHtml(p.ask)}</div>
+        <div class="rev-a">${ok ? "✅ " + escapeHtml(p.answer)
+          : "❌ You: " + escapeHtml(yours || "—") + " · Answer: <b>" + escapeHtml(p.answer) + "</b>"}</div>
+        <div class="rev-t">${escapeHtml(p.tip || "")}</div></div>`;
+    }).join("");
+    screenEl.innerHTML = `
+      <div class="stage" style="text-align:center">
+        <div class="big-emoji">${score === qs.length ? "🏆" : "♟️"}</div>
+        <div class="big-letter" style="font-size:60px">${score} / ${qs.length}</div>
+        <div class="hint">${divLabel(div)} test · earned ${stars} ⭐</div>
+        <div class="btn-row">
+          <button class="btn green" id="again">🔁 Try again</button>
+          <button class="btn grey" id="home">🏠 Home</button></div>
+      </div>
+      <h3 class="section-title" style="margin-top:16px">Review</h3>
+      <div class="rev-list">${review}</div>`;
+    document.getElementById("again").onclick = () => chessTest(div);
+    document.getElementById("home").onclick = showHome;
+  }
+  render();
+  roundTimer = setInterval(() => {
+    left--;
+    const c = document.getElementById("clock");
+    if (c) c.textContent = "⏱️ " + mmss(left);
+    if (left <= 0) finishTest();
+  }, 1000);
 }
 function chessLearn() {
   setBack(chessMenu);
